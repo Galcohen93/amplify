@@ -34,10 +34,12 @@ function App() {
         ))}
       </ul>
       <div>
-        🥳 App successfully hosted. Try creating a new todo.
+        Here there will be a dashboard.
         <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
+        <br />
+        <a href="https://www.waving.ai">
+          Waving.ai - Learn more
+          <br /><br />
         </a>
       </div>
       <button onClick={signOut}>Sign out</button>
