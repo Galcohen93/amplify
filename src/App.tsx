@@ -2,26 +2,114 @@ import { useEffect, useState } from "react";
 import type { Schema } from "../amplify/data/resource";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from "aws-amplify/data";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 
+"use client";
 const client = generateClient<Schema>();
 
 function App() {
-  const {user,signOut } = useAuthenticator();
+  const { user, signOut } = useAuthenticator();
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [alarmStatus, setAlarmStatus] = useState<boolean>(false);
+  const [alarmId, setAlarmId] = useState<string | null>(null);
+  const [alarmHistory, setAlarmHistory] = useState<Array<{ status: number; updatedAt: string }>>([]);
 
   useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
+    // Fetch Alarm history data for the dashboard
+    client.models.Alarm.list({
+      sort: { field: "createdAt", direction: "ASC" }, // Sort by createdAt timestamp in ascending order
+    }).then(({ data }) => {
+      if (data && data.items) {
+        // Map the data to the structure needed for the chart
+        const history = data.items.map((item) => ({
+          status: item.status ? 1 : 0, // Convert boolean to number for y-axis
+          createdAt: new Date(item.createdAt).toLocaleString(), // Directly format to readable string
+        }));
+        setAlarmHistory(history);
+  
+        // If there's an existing latest Alarm entry, set its status and ID
+        if (data.items.length > 0) {
+          const latestAlarm = data.items[data.items.length - 1];
+          setAlarmStatus(latestAlarm.status);
+          setAlarmId(latestAlarm.id);
+        }
+      }
+    }).catch(error => console.error("Error fetching alarm history:", error));
   }, []);
+  
+  
+  
+  
 
-    
+  // Toggle Alarm status
+  function toggleAlarm() {
+    const newStatus = !alarmStatus;
+    setAlarmStatus(newStatus);
+
+    // Update existing alarm entry if it exists
+    if (alarmId) {
+      client.models.Alarm.update({ id: alarmId, status: newStatus }).then((updatedAlarm) => {
+        setAlarmHistory((prevHistory) => [
+          ...prevHistory,
+          { status: newStatus ? 1 : 0, updatedAt: new Date(updatedAlarm.updatedAt).toLocaleString() },
+        ]);
+      }).catch(error => {
+        console.error("Error updating alarm status:", error);
+        alert("Failed to update alarm status.");
+      });
+    } else {
+      // If no alarmId, create a new entry
+      client.models.Alarm.create({ status: newStatus }).then((newAlarm) => {
+        setAlarmId(newAlarm.id);
+        setAlarmHistory((prevHistory) => [
+          ...prevHistory,
+          { status: newStatus ? 1 : 0, updatedAt: new Date(newAlarm.updatedAt).toLocaleString() },
+        ]);
+      }).catch(error => {
+        console.error("Error creating alarm status:", error);
+        alert("Failed to create alarm status.");
+      });
+    }
+  }
+
   function deleteTodo(id: string) {
-    client.models.Todo.delete({ id })
+    client.models.Todo.delete({ id }).catch((error) => {
+      console.error("Error deleting todo:", error);
+      alert("Failed to delete todo.");
+    });
   }
 
   function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
+    const content = window.prompt("Todo content");
+    if (content) {
+      client.models.Todo.create({ content, isDone: false }).then((newTodo) => {
+        setTodos((prevTodos) => [...prevTodos, newTodo]);
+      }).catch((error) => {
+        console.error("Error creating todo:", error);
+        alert("Failed to create todo.");
+      });
+    }
+  }
+
+  function toggleOrDeleteTodo(todo: Schema["Todo"]["type"]) {
+    if (todo.isDone) {
+      deleteTodo(todo.id);
+      setTodos((prevTodos) => prevTodos.filter((item) => item.id !== todo.id));
+    } else {
+      client.models.Todo.update({
+        id: todo.id,
+        isDone: true,
+      }).then(() => {
+        setTodos((prevTodos) =>
+          prevTodos.map((item) =>
+            item.id === todo.id ? { ...item, isDone: true } : item
+          )
+        );
+      }).catch((error) => {
+        console.error("Error updating todo:", error);
+        alert("Failed to update todo.");
+      });
+    }
   }
 
   return (
@@ -30,22 +118,47 @@ function App() {
       <button onClick={createTodo}>+ new</button>
       <ul>
         {todos.map((todo) => (
-          <li onClick={() => deleteTodo(todo.id)}key={todo.id}>{todo.content}</li>
+          <li
+            key={todo.id}
+            onClick={() => toggleOrDeleteTodo(todo)}
+            style={{ textDecoration: todo.isDone ? "line-through" : "none" }}
+          >
+            {todo.content}
+          </li>
         ))}
       </ul>
       <div>
-        Here there will be a dashboard.
-        <br />
-        <br />
+        <button onClick={toggleAlarm}>
+          Alarm {alarmStatus ? "ON" : "OFF"}
+        </button>
+      </div>
+      <div style={{ width: '100%', height: 300 }}>
+        <h2>Real-Time Alarm Status Dashboard</h2>
+        <ResponsiveContainer>
+          <LineChart data={alarmHistory}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="createdAt" />
+            <YAxis dataKey="status" domain={[0, 1]} tickFormatter={(value) => (value ? "ON" : "OFF")} />
+            <Tooltip />
+            <Line type="monotone" dataKey="status" stroke="#8884d8" />
+          </LineChart>
+        </ResponsiveContainer>
+
+      </div>
+      <div>
+      <br />
+      <br />
+      <br />
+      <br />
         <a href="https://www.waving.ai">
           Waving.ai - Learn more
-          <br /><br />
+          <br />
+          <br />
         </a>
       </div>
       <button onClick={signOut}>Sign out</button>
     </main>
   );
 }
-
 
 export default App;
