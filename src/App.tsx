@@ -21,28 +21,31 @@ function App() {
 
   useEffect(() => {
     // Fetch Alarm history data for the dashboard
-    client.models.Alarm.list({
-      sort: { field: "createdAt", direction: "ASC" }, // Sort by createdAt timestamp in ascending order
-    }).then((result) => {
-      const data = result.data as Array<Schema["Alarm"]["type"]>; // Explicitly cast items as array
-      if (data) {
-        // Map the data to the structure needed for the chart
-        const history = data.map((item) => ({
+    client.models.Alarm.list().then((result) => {
+      // Check if result and result.data exist and are in the expected array format
+      if (result?.data) {
+        const data = result.data as Array<Schema["Alarm"]["type"]>; 
+  
+        // Sort the data by createdAt in ascending order
+        const sortedData = data.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  
+        // Map the sorted data to the structure needed for the chart
+        const history = sortedData.map((item) => ({
           status: item.status ? 1 : 0, // Convert boolean to number for y-axis
-          createdAt: new Date(item.createdAt).toLocaleString(), // Format createdAt to readable string
+          createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString() : "N/A", // Handle nullable createdAt
         }));
         setAlarmHistory(history);
-
-        // If there's an existing latest Alarm entry, set its status and ID
-        if (data.length > 0) {
-          const latestAlarm = data[data.length - 1];
-          setAlarmStatus(latestAlarm.status);
+  
+        // Set the latest alarm status and ID if data is present
+        if (sortedData.length > 0) {
+          const latestAlarm = sortedData[sortedData.length - 1];
+          setAlarmStatus(latestAlarm.status ?? false); // Provide default value if status is null
           setAlarmId(latestAlarm.id);
         }
       }
     }).catch(error => console.error("Error fetching alarm history:", error));
   }, []);
-
+  
   // Toggle Alarm status
   function toggleAlarm() {
     const newStatus = !alarmStatus;
@@ -53,7 +56,7 @@ function App() {
       client.models.Alarm.update({ id: alarmId, status: newStatus }).then((updatedAlarm) => {
         setAlarmHistory((prevHistory) => [
           ...prevHistory,
-          { status: newStatus ? 1 : 0, createdAt: new Date(updatedAlarm.createdAt).toLocaleString() },
+          { status: newStatus ? 1 : 0, createdAt: updatedAlarm.createdAt ? new Date(updatedAlarm.createdAt).toLocaleString() : "N/A" },
         ]);
       }).catch(error => {
         console.error("Error updating alarm status:", error);
@@ -65,7 +68,7 @@ function App() {
         setAlarmId(newAlarm.id);
         setAlarmHistory((prevHistory) => [
           ...prevHistory,
-          { status: newStatus ? 1 : 0, createdAt: new Date(newAlarm.createdAt).toLocaleString() },
+          { status: newStatus ? 1 : 0, createdAt: newAlarm.createdAt ? new Date(newAlarm.createdAt).toLocaleString() : "N/A" },
         ]);
       }).catch(error => {
         console.error("Error creating alarm status:", error);
@@ -140,7 +143,7 @@ function App() {
           <LineChart data={alarmHistory}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="createdAt" />
-            <YAxis dataKey="status" domain={[0, 1]} tickFormatter={(value) => (value ? "ON" : "OFF")} />
+            <YAxis dataKey="status" domain={[0, 1]} tickFormatter={(value: number) => (value ? "ON" : "OFF")} />
             <Tooltip />
             <Line type="monotone" dataKey="status" stroke="#8884d8" />
           </LineChart>
