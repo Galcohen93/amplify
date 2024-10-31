@@ -7,39 +7,41 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContai
 "use client";
 const client = generateClient<Schema>();
 
+type AlarmHistoryEntry = {
+  status: number;
+  createdAt: string;
+};
+
 function App() {
   const { user, signOut } = useAuthenticator();
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [alarmStatus, setAlarmStatus] = useState<boolean>(false);
   const [alarmId, setAlarmId] = useState<string | null>(null);
-  const [alarmHistory, setAlarmHistory] = useState<Array<{ status: number; createdAt: string }>>([]);
+  const [alarmHistory, setAlarmHistory] = useState<AlarmHistoryEntry[]>([]);
 
   useEffect(() => {
     // Fetch Alarm history data for the dashboard
     client.models.Alarm.list({
       sort: { field: "createdAt", direction: "ASC" }, // Sort by createdAt timestamp in ascending order
-    }).then(({ data }) => {
-      if (data && data.items) {
+    }).then((result) => {
+      const data = result.data as Array<Schema["Alarm"]["type"]>; // Explicitly cast items as array
+      if (data) {
         // Map the data to the structure needed for the chart
-        const history = data.items.map((item) => ({
+        const history = data.map((item) => ({
           status: item.status ? 1 : 0, // Convert boolean to number for y-axis
-          createdAt: new Date(item.createdAt).toLocaleString(), // Directly format to readable string
+          createdAt: new Date(item.createdAt).toLocaleString(), // Format createdAt to readable string
         }));
         setAlarmHistory(history);
-  
+
         // If there's an existing latest Alarm entry, set its status and ID
-        if (data.items.length > 0) {
-          const latestAlarm = data.items[data.items.length - 1];
+        if (data.length > 0) {
+          const latestAlarm = data[data.length - 1];
           setAlarmStatus(latestAlarm.status);
           setAlarmId(latestAlarm.id);
         }
       }
     }).catch(error => console.error("Error fetching alarm history:", error));
   }, []);
-  
-  
-  
-  
 
   // Toggle Alarm status
   function toggleAlarm() {
@@ -51,7 +53,7 @@ function App() {
       client.models.Alarm.update({ id: alarmId, status: newStatus }).then((updatedAlarm) => {
         setAlarmHistory((prevHistory) => [
           ...prevHistory,
-          { status: newStatus ? 1 : 0, updatedAt: new Date(updatedAlarm.updatedAt).toLocaleString() },
+          { status: newStatus ? 1 : 0, createdAt: new Date(updatedAlarm.createdAt).toLocaleString() },
         ]);
       }).catch(error => {
         console.error("Error updating alarm status:", error);
@@ -63,7 +65,7 @@ function App() {
         setAlarmId(newAlarm.id);
         setAlarmHistory((prevHistory) => [
           ...prevHistory,
-          { status: newStatus ? 1 : 0, updatedAt: new Date(newAlarm.updatedAt).toLocaleString() },
+          { status: newStatus ? 1 : 0, createdAt: new Date(newAlarm.createdAt).toLocaleString() },
         ]);
       }).catch(error => {
         console.error("Error creating alarm status:", error);
@@ -143,13 +145,10 @@ function App() {
             <Line type="monotone" dataKey="status" stroke="#8884d8" />
           </LineChart>
         </ResponsiveContainer>
-
       </div>
       <div>
-      <br />
-      <br />
-      <br />
-      <br />
+        <br />
+        <br />
         <a href="https://www.waving.ai">
           Waving.ai - Learn more
           <br />
