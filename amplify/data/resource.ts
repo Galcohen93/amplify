@@ -1,8 +1,8 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
 /*== STEP 1 ===============================================================
-The section below creates three tables: Todo, Alarm, and RealtimeDashboard. 
-The RealtimeDashboard table includes fields like sysTime, device_id, 
+The section below creates three tables: Todo, Alarm, and realtimeDashboard. 
+The realtimeDashboard table includes fields like sysTime, device_id, 
 device_timestamp, jitter_median, etc. The authorization rule below specifies 
 that only the owner can access their records.
 =========================================================================*/
@@ -20,7 +20,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
-  RealtimeDashboard: a
+  realtimeDashboard: a
     .model({
       sysTime: a.string(),
       device_id: a.string(),          // Use a.int32() here
