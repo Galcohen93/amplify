@@ -12,32 +12,23 @@ type DashboardEntry = {
   sysTime: string;
 };
 
-interface RealtimeDashboardItem {
-  sysTime: string;
-  device_id: number;
-  jitter_median: number;
-  // Other fields can be added as needed
-}
-
 function App() {
   const { user, signOut } = useAuthenticator();
   const [dashboardData, setDashboardData] = useState<DashboardEntry[]>([]);
 
   useEffect(() => {
-    // Fetch data from the realtimeDashboard table with device_id = 1
-    client.models.realtimeDashboard.list().then((result) => {
-      const data = (result?.data as RealtimeDashboardItem[]) || [];
+    client.models.realtimeDashboard.list().then((result: { data: { sysTime: string, jitter_median: string, device_id: string }[] }) => {
+      const data = result.data || [];
 
-      // Filter for device_id = 1 and map to the desired structure
       const filteredData = data
-        .filter((item) => item.device_id === 1)
+        .filter((item) => item.device_id === "1") // Ensure `device_id` is a string for comparison
         .map((item) => ({
-          jitter_median: item.jitter_median,
+          jitter_median: parseFloat(item.jitter_median), // Convert string to number for charting
           sysTime: item.sysTime,
         }));
 
       setDashboardData(filteredData);
-    }).catch(error => console.error("Error fetching dashboard data:", error));
+    }).catch((error: Error) => console.error("Error fetching dashboard data:", error));
   }, []);
 
   return (
