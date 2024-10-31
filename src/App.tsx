@@ -12,7 +12,7 @@ function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [alarmStatus, setAlarmStatus] = useState<boolean>(false);
   const [alarmId, setAlarmId] = useState<string | null>(null);
-  const [alarmHistory, setAlarmHistory] = useState<Array<{ status: number; updatedAt: string }>>([]);
+  const [alarmHistory, setAlarmHistory] = useState<Array<{ status: number; createdAt: string }>>([]);
 
   useEffect(() => {
     // Fetch Alarm history data for the dashboard
