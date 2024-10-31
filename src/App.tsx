@@ -21,7 +21,6 @@ interface AlarmItem {
 
 function App() {
   const { user, signOut } = useAuthenticator();
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [alarmStatus, setAlarmStatus] = useState<boolean>(false);
   const [alarmId, setAlarmId] = useState<string | null>(null);
   const [alarmHistory, setAlarmHistory] = useState<AlarmHistoryEntry[]>([]);
@@ -84,61 +83,9 @@ function App() {
     }
   }
 
-  function deleteTodo(id: string) {
-    client.models.Todo.delete({ id }).catch((error) => {
-      console.error("Error deleting todo:", error);
-      alert("Failed to delete todo.");
-    });
-  }
-
-  function createTodo() {
-    const content = window.prompt("Todo content");
-    if (content) {
-      client.models.Todo.create({ content, isDone: false }).then((newTodo) => {
-        setTodos((prevTodos) => [...prevTodos, newTodo]);
-      }).catch((error) => {
-        console.error("Error creating todo:", error);
-        alert("Failed to create todo.");
-      });
-    }
-  }
-
-  function toggleOrDeleteTodo(todo: Schema["Todo"]["type"]) {
-    if (todo.isDone) {
-      deleteTodo(todo.id);
-      setTodos((prevTodos) => prevTodos.filter((item) => item.id !== todo.id));
-    } else {
-      client.models.Todo.update({
-        id: todo.id,
-        isDone: true,
-      }).then(() => {
-        setTodos((prevTodos) =>
-          prevTodos.map((item) =>
-            item.id === todo.id ? { ...item, isDone: true } : item
-          )
-        );
-      }).catch((error) => {
-        console.error("Error updating todo:", error);
-        alert("Failed to update todo.");
-      });
-    }
-  }
-
   return (
     <main>
-      <h1>{user?.signInDetails?.loginId}'s todos</h1>
-      <button onClick={createTodo}>+ new</button>
-      <ul>
-        {todos.map((todo) => (
-          <li
-            key={todo.id}
-            onClick={() => toggleOrDeleteTodo(todo)}
-            style={{ textDecoration: todo.isDone ? "line-through" : "none" }}
-          >
-            {todo.content}
-          </li>
-        ))}
-      </ul>
+      <h1>{user?.signInDetails?.loginId}'s Alarm Dashboard</h1>
       <div>
         <button onClick={toggleAlarm}>
           Alarm {alarmStatus ? "ON" : "OFF"}
