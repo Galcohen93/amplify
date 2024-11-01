@@ -16,6 +16,7 @@ function App() {
   const { user, signOut } = useAuthenticator();
   const [dashboardData, setDashboardData] = useState<DashboardEntry[]>([]);
 
+  
   useEffect(() => {
     client.models.realtimeDashboard.list().then((result: { data: { sysTime: string, jitter_median: string, device_id: string }[] }) => {
       const data = result.data || [];
